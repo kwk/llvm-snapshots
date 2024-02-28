@@ -28,6 +28,13 @@ on:
         default: true
         required: true
         type: boolean
+    secrets:
+      GITHUB_TOKEN:
+        required: true
+      TESTING_FARM_API_TOKEN_PUBLIC_RANCH:
+        required: true
+      TESTING_FARM_API_TOKEN_REDHAT_RANCH:
+        required: true
 
   workflow_dispatch:
     inputs:
