@@ -25,13 +25,13 @@ runs:
         BIG_MERGE_CONFIG=$(jq -c <<EOF
           {
               "name": "big-merge",
-              "copr_target_project": "@fedora-llvm-team/llvm-snapshots",
+              "copr_target_project": "@${GITHUB_REPOSITORY_OWNER}/llvm-snapshots",
               "clone_url_tpl": "https://src.fedoraproject.org/rpms/PKG.git",
               "clone_ref": "rawhide",
               "maintainer_handle": "nikic",
-              "copr_ownername": "@fedora-llvm-team",
+              "copr_ownername": "@${GITHUB_REPOSITORY_OWNER}",
               "copr_project_tpl": "llvm-snapshots-big-merge-YYYYMMDD",
-              "copr_monitor_tpl": "https://copr.fedorainfracloud.org/coprs/g/fedora-llvm-team/llvm-snapshots-big-merge-YYYYMMDD/monitor/",
+              "copr_monitor_tpl": "https://copr.fedorainfracloud.org/coprs/g/${GITHUB_REPOSITORY_OWNER}/llvm-snapshots-big-merge-YYYYMMDD/monitor/",
               "chroot_pattern": "^(fedora-(rawhide|[0-9]+)|rhel-[8,9]-)",
               "packages": "llvm"
           }
@@ -41,14 +41,14 @@ runs:
         PGO_CONFIG=$(jq -c <<EOF
           {
             "name": "pgo",
-            "copr_target_project": "@fedora-llvm-team/llvm-snapshots-pgo",
+            "copr_target_project": "@${GITHUB_REPOSITORY_OWNER}llvm-snapshots-pgo",
             "extra_script_file": "scripts/functions-pgo.sh",
             "clone_url_tpl": "https://src.fedoraproject.org/forks/kkleine/rpms/PKG.git",
             "clone_ref": "pgo",
             "maintainer_handle": "kwk",
-            "copr_ownername": "@fedora-llvm-team",
+            "copr_ownername": "@${GITHUB_REPOSITORY_OWNER}",
             "copr_project_tpl": "llvm-snapshots-pgo-YYYYMMDD",
-            "copr_monitor_tpl": "https://copr.fedorainfracloud.org/coprs/g/fedora-llvm-team/llvm-snapshots-pgo-YYYYMMDD/monitor/",
+            "copr_monitor_tpl": "https://copr.fedorainfracloud.org/coprs/g/${GITHUB_REPOSITORY_OWNER}/llvm-snapshots-pgo-YYYYMMDD/monitor/",
             "chroot_pattern": "^(fedora-41)",
             "packages": "llvm"
           }
