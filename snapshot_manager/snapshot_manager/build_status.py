@@ -6,6 +6,9 @@ import dataclasses
 import enum
 import logging
 import pathlib
+import re
+
+import munch
 
 import snapshot_manager.util as util
 
@@ -96,6 +99,7 @@ class BuildState:
     build_id: int = -1
     copr_build_state: CoprBuildStatus = None
     err_ctx: str = ""
+
     copr_ownername: str = ""
     copr_projectname: str = ""
 
@@ -114,27 +118,27 @@ class BuildState:
 """
 
     @property
-    def success(self) -> bool:
+    def is_successful(self) -> bool:
         """Returns True if the underlying copr build state is "succeeded" or "forked".
 
         Examples:
 
-        >>> BuildState(copr_build_state="succeeded").success
+        >>> BuildState(copr_build_state="succeeded").is_successful
         True
 
-        >>> BuildState(copr_build_state="forked").success
+        >>> BuildState(copr_build_state="forked").is_successful
         True
 
-        >>> BuildState(copr_build_state=CoprBuildStatus.SUCCEEDED).success
+        >>> BuildState(copr_build_state=CoprBuildStatus.SUCCEEDED).is_successful
         True
 
-        >>> BuildState(copr_build_state=CoprBuildStatus.FORKED).success
+        >>> BuildState(copr_build_state=CoprBuildStatus.FORKED).is_successful
         True
 
-        >>> BuildState(copr_build_state="waiting").success
+        >>> BuildState(copr_build_state="waiting").is_successful
         False
 
-        >>> BuildState(copr_build_state=CoprBuildStatus.IMPORTING).success
+        >>> BuildState(copr_build_state=CoprBuildStatus.IMPORTING).is_successful
         False
         """
         return CoprBuildStatus(str(self.copr_build_state)).success

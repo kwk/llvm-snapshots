@@ -2,7 +2,6 @@
 SnapshotManager
 """
 
-import datetime
 import logging
 import re
 
@@ -23,7 +22,7 @@ class SnapshotManager:
 
     def __init__(self, config: config.Config = config.Config()):
         self.config = config
-        self.copr = copr_util.CoprClient(config=config)
+        self.copr_client = copr_util.make_client()
         self.github = github_util.GithubClient(config=config)
 
     @classmethod
@@ -116,7 +115,10 @@ class SnapshotManager:
         logging.info(
             f"Checking if all given chroots are really relevant for us or even chroots"
         )
-        relevant_chroots = self.copr.get_copr_chroots()
+        all_chroots = copr_util.get_all_chroots(client=self.copr.client)
+        relevant_chroots = copr_util.filter_chroots(
+            chroots=all_chroots, pattern=self.config.chroot_pattern
+        )
         for chroot in chroots:
             logging.info(f"Checking chroot: {chroot}")
             if not util.is_chroot(chroot):
@@ -136,7 +138,7 @@ class SnapshotManager:
         # successful.
         new_comment_body = issue.body
         for chroot in chroots:
-            new_comment_body = self.remove_chroot_html_comment(
+            new_comment_body = util.remove_chroot_html_comment(
                 comment_body=new_comment_body, chroot=chroot
             )
         issue.edit(
@@ -164,6 +166,7 @@ class SnapshotManager:
 
     def check_todays_builds(self) -> None:
         """This method is driven from the config settings"""
+
         issue, issue_is_newly_created = self.github.create_or_get_todays_github_issue(
             creator=self.config.creator_handle,
         )
@@ -173,7 +176,10 @@ class SnapshotManager:
         #     )
         #     return
 
-        all_chroots = self.copr.get_copr_chroots()
+        all_chroots = copr_util.get_all_chroots(client=self.copr_client)
+        all_chroots = copr_util.filter_chroots(
+            chroots=all_chroots, pattern=self.config.chroot_pattern
+        )
 
         if issue_is_newly_created:
             # The issue was newly created so we'll create comments for each
@@ -191,15 +197,18 @@ class SnapshotManager:
             issue.add_to_assignees(self.config.maintainer_handle)
 
         logging.info("Get build states from copr")
-        states = self.copr.get_build_states_from_copr_monitor(
-            copr_ownername=self.config.copr_ownername,
-            copr_projectname=self.config.copr_projectname,
+        states = copr_util.get_all_build_states(
+            client=self.copr_client,
+            ownername=self.config.copr_ownername,
+            projectname=self.config.copr_projectname,
         )
 
         logging.info("Filter states by chroot of interest")
-        states = [
-            state for state in states if state.chroot in self.copr.get_copr_chroots()
-        ]
+        chroots_of_interest = copr_util.filter_chroots(
+            chroots=copr_util.get_all_chroots(client=self.copr_client),
+            pattern=self.config.chroot_pattern,
+        )
+        states = [state for state in states if state.chroot in chroots_of_interest]
 
         logging.info("Augment the states with information from the build logs")
         states = [state.augment_with_error() for state in states]
@@ -244,7 +253,10 @@ class SnapshotManager:
         logging.info("Filter testing-farm requests by chroot of interest")
         new_requests = dict()
         for chroot in requests:
-            if chroot in self.copr.get_copr_chroots():
+            if chroot in copr_util.filter_chroots(
+                chroots=copr_util.get_all_chroots(client=self.copr_client),
+                pattern=self.config.chroot_pattern,
+            ):
                 new_requests[chroot] = requests[chroot]
         requests = new_requests
 
@@ -324,9 +336,7 @@ class SnapshotManager:
                     del requests[chroot]
 
             logging.info(f"Check if all builds in chroot {chroot} have succeeded")
-            builds_succeeded = self.copr.has_all_good_builds(
-                copr_ownername=self.config.copr_ownername,
-                copr_projectname=self.config.copr_projectname,
+            builds_succeeded = copr_util.has_all_good_builds(
                 required_chroots=[chroot],
                 required_packages=self.config.packages,
                 states=states,

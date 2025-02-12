@@ -474,3 +474,26 @@ def get_release_for_yyyymmdd(yyyymmdd: str) -> str:
     logging.info(f"Getting URL {url}")
     response = requests.get(url)
     return response.text.strip()
+
+
+def remove_chroot_html_comment(comment_body: str, chroot: str):
+    """
+
+    >>> chroot="fedora-40-aarch64"
+    >>> req1 = f'<!--TESTING_FARM:{chroot}/68b70645-221d-4391-a918-06db7f414a48/7320315,7320317,7320318,7320316,7320314,7320231,7320313-->'
+    >>> req2 = '<!--TESTING_FARM:fedora-40-ppc64le/eee0e5d5-2d7a-4cbd-9b7d-7d60a10c40fe/7320327,7320329,7320330,7320328,7320326,7320231,7320325-->'
+    >>> input = f'''foo
+    ... {req1}
+    ... {req2}
+    ... bar'''
+    >>> expected = f'''foo
+    ...
+    ... {req2}
+    ... bar'''
+    >>> actual = remove_chroot_html_comment(comment_body=input, chroot=chroot)
+    >>> actual == expected
+    True
+    """
+    expect_chroot(chroot)
+    pattern = re.compile(rf"<!--TESTING_FARM:\s*{chroot}/.*?-->")
+    return re.sub(pattern=pattern, repl="", string=comment_body)

@@ -1,47 +1,123 @@
 """ Tests for copr_client """
 
+import os
 import uuid
+from collections.abc import Generator
+from unittest import mock
 
+import copr.v3
+import munch
+import pytest
 import tests.base_test as base_test
 
-import snapshot_manager.config as config
 import snapshot_manager.copr_util as copr_util
+from snapshot_manager.build_status import BuildState
 
 
-class TestCopr(base_test.TestBase):
-    def test_project_exists(self):
-        """Test if copr project exists."""
-        self.assertTrue(
-            copr_util.CoprClient().project_exists(
-                copr_ownername="@fedora-llvm-team", copr_projectname="llvm-snapshots"
-            )
-        )
+@mock.patch("copr.v3.Client")
+def test_make_client__from_env(client_mock: mock.Mock):
+    myconfig = {
+        "COPR_URL": "myurl",
+        "COPR_LOGIN": "mylogin",
+        "COPR_TOKEN": "mytoken",
+        "COPR_USERNAME": "myusername",
+    }
+    with mock.patch.dict(os.environ, values=myconfig, clear=True):
+        copr_util.make_client()
 
-        rand = str(uuid.uuid4())
-        self.assertFalse(
-            copr_util.CoprClient().project_exists(
-                copr_ownername=rand, copr_projectname=rand
-            )
-        )
+    config = {
+        "copr_url": myconfig["COPR_URL"],
+        "login": myconfig["COPR_LOGIN"],
+        "token": myconfig["COPR_TOKEN"],
+        "username": myconfig["COPR_USERNAME"],
+    }
+    client_mock.assert_called_once_with(config)
 
-    def test_copr_chroots(self):
-        """Ensure all chroots match the default chroot pattern."""
-        chroots = copr_util.CoprClient().get_copr_chroots()
-        for chroot in chroots:
-            self.assertRegex(chroot, config.Config().chroot_pattern)
 
-    def test_is_package_supported_by_chroot(self):
-        """Test if package is supported by chroot"""
-        self.assertTrue(
-            copr_util.CoprClient.is_package_supported_by_chroot(
-                package="lld", chroot="fedora-rawhide-x86_64"
-            )
-        )
-        self.assertTrue(
-            copr_util.CoprClient.is_package_supported_by_chroot(
-                package="llvm", chroot="fedora-rawhide-x86_64"
-            )
-        )
+@mock.patch("copr.v3.Client")
+def test_make_client__from_file(client_mock: mock.Mock):
+    # Missing a few parameters, so defaulting back to creation from file
+    myconfig = {"COPR_URL": "myurl"}
+    with mock.patch.dict(os.environ, values=myconfig, clear=True):
+        copr_util.make_client()
+    client_mock.create_from_config_file.assert_called_once()
+
+
+@mock.patch("copr.v3.Client")
+def test_get_all_chroots(client_mock: mock.Mock):
+    copr_util.get_all_chroots(client=client_mock)
+    client_mock.mock_chroot_proxy.get_list.assert_called_once()
+
+
+@mock.patch("copr.v3.Client")
+def test_get_all_build_states(client_mock: mock.Mock):
+    # given
+    ownername = "@fedora-llvm-team"
+    projectname = "llvm-snapshots-big-merge-20250217"
+    chroot1 = {
+        "build_id": 8662297,
+        "state": "succeeded",
+        "url_build_log": "https://download.copr.fedorainfracloud.org/results/@fedora-llvm-team/llvm-snapshots-big-merge-20250217/rhel-9-x86_64/08662297-llvm/builder-live.log.gz",
+    }
+    chroot2 = {
+        "build_id": 8662296,
+        "state": "running",
+        "url_build_log": "https://download.copr.fedorainfracloud.org/results/@fedora-llvm-team/llvm-snapshots-big-merge-20250217/rhel-9-s390x/08662296-llvm/builder-live.log",
+        "url_build": "https://copr.fedorainfracloud.org/coprs/g/fedora-llvm-team/llvm-snapshots-big-merge-20250217/build/8662296/",
+    }
+    client_mock.monitor_proxy.monitor.return_value = munch.munchify(
+        {
+            "output": "ok",
+            "message": "Project monitor request successful",
+            "packages": [
+                {
+                    "name": "llvm",
+                    "chroots": {
+                        "rhel-9-x86_64": chroot1,
+                        "rhel-9-s390x": chroot2,
+                    },
+                }
+            ],
+        }
+    )
+    # when
+    actual = copr_util.get_all_build_states(
+        client=client_mock, ownername=ownername, projectname=projectname
+    )
+    # then
+    client_mock.monitor_proxy.monitor.assert_called_once_with(
+        ownername=ownername,
+        projectname=projectname,
+        additional_fields=["url_build_log", "url_build"],
+    )
+    expected = [
+        BuildState(
+            err_cause=None,
+            package_name="llvm",
+            chroot="rhel-9-x86_64",
+            url_build_log=chroot1["url_build_log"],
+            url_build="",
+            build_id=chroot1["build_id"],
+            copr_build_state=chroot1["state"],
+            err_ctx="",
+            copr_ownername=ownername,
+            copr_projectname=projectname,
+        ),
+        BuildState(
+            err_cause=None,
+            package_name="llvm",
+            chroot="rhel-9-s390x",
+            url_build_log=chroot2["url_build_log"],
+            url_build=chroot2["url_build"],
+            build_id=chroot2["build_id"],
+            copr_build_state=chroot2["state"],
+            err_ctx="",
+            copr_ownername=ownername,
+            copr_projectname=projectname,
+        ),
+    ]
+
+    assert actual == expected
 
 
 def load_tests(loader, tests, ignore):

@@ -2,10 +2,7 @@
 GithubGraphQL
 """
 
-import logging
-import os
-import pathlib
-from typing import Any, Union
+from typing import Any
 
 import fnc
 from requests import Session
