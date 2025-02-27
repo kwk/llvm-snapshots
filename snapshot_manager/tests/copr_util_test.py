@@ -43,6 +43,22 @@ def test_make_client__from_file(client_mock: mock.Mock):
     client_mock.create_from_config_file.assert_called_once()
 
 
+@pytest.mark.parametrize(
+    "owner, project, expected",
+    [
+        ("@fedora-llvm-team", "llvm-snapshots", True),
+        (str(uuid.uuid4()), str(uuid.uuid4()), False),
+    ],
+)
+def test_project_exists(owner: str, project: str, expected: bool):
+    """Test if copr project exists."""
+    client = copr_util.make_client()
+    actual = copr_util.project_exists(
+        client=client, ownername=owner, projectname=project
+    )
+    assert actual == expected
+
+
 @mock.patch("copr.v3.Client")
 def test_get_all_chroots(client_mock: mock.Mock):
     copr_util.get_all_chroots(client=client_mock)

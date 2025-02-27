@@ -39,6 +39,28 @@ def make_client() -> copr.v3.Client:
     return client
 
 
+def project_exists(
+    client: copr.v3.Client,
+    ownername: str,
+    projectname: str,
+) -> bool:
+    """Returns True if the given copr project exists; otherwise False.
+
+    Args:
+        client (copr.v3.Client): Copr client
+        ownername (str): Copr owner name
+        projectname (str): Copr project name
+
+    Returns:
+        bool: True if the project exists in copr; otherwise False.
+    """
+    try:
+        client.project_proxy.get(ownername=ownername, projectname=projectname)
+    except copr.v3.CoprNoResultException:
+        return False
+    return True
+
+
 @functools.cache
 def get_all_chroots(client: copr.v3.Client) -> list[str]:
     """Asks Copr to list all currently supported chroots. The response Copr will
