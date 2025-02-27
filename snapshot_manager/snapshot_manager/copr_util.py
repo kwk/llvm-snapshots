@@ -61,6 +61,14 @@ def project_exists(
     return True
 
 
+def get_all_builds(
+    client: copr.v3.Client,
+    ownername: str,
+    projectname: str,
+) -> list[munch.Munch]:
+    return client.build_proxy.get_list(ownername=ownername, projectname=projectname)
+
+
 @functools.cache
 def get_all_chroots(client: copr.v3.Client) -> list[str]:
     """Asks Copr to list all currently supported chroots. The response Copr will

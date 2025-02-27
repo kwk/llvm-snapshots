@@ -60,6 +60,14 @@ def test_project_exists(owner: str, project: str, expected: bool):
 
 
 @mock.patch("copr.v3.Client")
+def test_get_all_builds(client_mock: mock.Mock):
+    copr_util.get_all_builds(client=client_mock, ownername="foo", projectname="bar")
+    client_mock.build_proxy.get_list.assert_called_once_with(
+        ownername="foo", projectname="bar"
+    )
+
+
+@mock.patch("copr.v3.Client")
 def test_get_all_chroots(client_mock: mock.Mock):
     copr_util.get_all_chroots(client=client_mock)
     client_mock.mock_chroot_proxy.get_list.assert_called_once()
