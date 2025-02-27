@@ -69,6 +69,32 @@ def get_all_builds(
     return client.build_proxy.get_list(ownername=ownername, projectname=projectname)
 
 
+def filter_builds_by_state(
+    builds: list[munch.Munch],
+    state_pattern: str,
+) -> list[munch.Munch]:
+    """Returns copr builds for the given owner/project where the state matches the given pattern.
+
+    Args:
+        builds (list[munch.Munch]): A list of builds. See `get_all_builds` to get all builds for a given owner/project
+        state_pattern (str): Regular expression to select what states of a copr build are considered active. (e.g. `r"(running|waiting|pending|importing|starting)"`)
+
+    Returns:
+        list[munch.Munch]: A list of filtered builds
+
+    >>> from snapshot_manager.build_status import CoprBuildStatus
+    >>> b1 = munch.Munch(package_name="llvm", chroot = "rhel-9-ppc64le", state = CoprBuildStatus.RUNNING)
+    >>> b2 = munch.Munch(package_name="llvm", chroot = "centos-stream-10-ppc64le", state = CoprBuildStatus.STARTING)
+    >>> b3 = munch.Munch(package_name="llvm", chroot = "fedora-rawhide-x86_64", state = CoprBuildStatus.FAILED)
+    >>> res = filter_builds_by_state(builds=[b1,b2,b3], state_pattern=r"(running|waiting|pending|importing|starting)")
+    >>> res == [b1,b2]
+    True
+    """
+    return [
+        build for build in builds if re.match(pattern=state_pattern, string=build.state)
+    ]
+
+
 @functools.cache
 def get_all_chroots(client: copr.v3.Client) -> list[str]:
     """Asks Copr to list all currently supported chroots. The response Copr will
