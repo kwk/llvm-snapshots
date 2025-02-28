@@ -63,11 +63,13 @@ jobs:
         env:
           get_stats: ${{ github.event_name == 'schedule' && true || github.event.inputs.get_stats }}
           create_diagrams: ${{ github.event_name == 'schedule' && true || github.event.inputs.create_diagrams }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           if ${{ env.get_stats }}; then
             main/scripts/get-build-stats.py --copr-projectname "llvm-snapshots-big-merge-$(date '+%Y%m%d')" | tee -a gh-pages/build-stats-big-merge.csv
             main/scripts/get-build-stats.py --copr-projectname "llvm-snapshots-pgo-$(date '+%Y%m%d')" | tee -a gh-pages/build-stats-pgo.csv
-            git -C gh-pages add build-stats-big-merge.csv build-stats-pgo.csv
+            main/scripts/get-tags.py --token ${{ secrets.GITHUB_TOKEN }} --show-header | tee gh-pages/tags.csv
+            git -C gh-pages add build-stats-big-merge.csv build-stats-pgo.csv tags.csv
           fi
           if ${{ env.create_diagrams }}; then
             main/scripts/create-diagrams.py --datafile-big-merge gh-pages/build-stats-big-merge.csv --datafile-pgo gh-pages/build-stats-pgo.csv
