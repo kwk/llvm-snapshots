@@ -13,13 +13,16 @@ import plotly.io as pio
 
 
 # %%
-def create_figure(df: pd.DataFrame, package_name: str = None) -> go.Figure:
+def create_figure(
+    df: pd.DataFrame, df_tags: pd.DataFrame, package_name: str = None
+) -> go.Figure:
     """Creates a figure for a particular package name
 
     When no package_name is specified, the whole dataframe is used.
 
     Args:
         df (pd.DataFrame): The complete dataframe to grab information from
+        df_tags (pd.DataFrame): dataframe with tag annotation data
         package_names (str , optional): The package name by which to lookup information from the dataframe df.
 
     Returns:
@@ -64,6 +67,17 @@ def create_figure(df: pd.DataFrame, package_name: str = None) -> go.Figure:
     #         x = max_build_times["date"][idx]
     #         fig.add_annotation(x=x, y=y, text="max: {}".format(y), hovertext=str(cr))
 
+    # Add an annotation for each tag
+    df_tags.reset_index()  # make sure indexes pair with number of rows
+    for index, row in df_tags.iterrows():
+        fig.add_annotation(
+            x=row["date"],
+            y=0,
+            text=row["tag"],
+            hovertext=str(row["tag"]),
+            textangle=-90,
+        )
+
     # Uncomment this to show hovers for all chroots at once
     # fig.update_traces(mode="markers+lines", hovertemplate=None)
     # fig.update_layout(hovermode="x") # "x unified"
@@ -73,7 +87,6 @@ def create_figure(df: pd.DataFrame, package_name: str = None) -> go.Figure:
     fig.update_traces(textposition="bottom left")
     fig.update_xaxes(minor=dict(ticks="outside", showgrid=True))
     fig.update_layout(yaxis_tickformat="%H:%M:%S")
-
     return fig
 
 
@@ -200,6 +213,13 @@ def main() -> None:
         default="build-stats-pgo.csv",
         help="path to your build-stats-pgo.csv file",
     )
+    parser.add_argument(
+        "--datafile-tags",
+        dest="datafile_tags",
+        type=str,
+        default="tags.csv",
+        help="path to your tags.csv file",
+    )
     args = parser.parse_args()
 
     # %%
@@ -208,6 +228,16 @@ def main() -> None:
     pio.templates.default = (
         "plotly"  # See https://plotly.com/python/templates/#theming-and-templates
     )
+
+    # Create dataframe of tags and sort it by date
+    df_tags = pd.read_csv(
+        filepath_or_buffer=args.datafile_tags,
+        parse_dates=["date"],
+        delimiter=",",
+        header=0,
+    )
+    df_tags.sort_values(by=["date"], inplace=True)
+    df_tags.info()
 
     # Create dataframe of llvm in "big-merge mode". The chroots are prefixed
     # with "big-merge-" on the fly to be able to distinguish the two cases.
@@ -230,25 +260,25 @@ def main() -> None:
     df_pgo_succeeded = df_pgo.where(filter, inplace=False).dropna()
 
     # Create dedicated big-merge figure with nothing else in it.
-    fig = create_figure(df=df_big_merge)
+    fig = create_figure(df=df_big_merge, df_tags=df_tags)
     filepath = "fig-big-merge-all-states.html"
     save_figure(fig=fig, filepath=filepath)
     add_html_header_menu(filepath=filepath)
 
     # Create dedicated big-merge figure with nothing else in it.
-    fig = create_figure(df=df_big_merge_succeeded)
+    fig = create_figure(df=df_big_merge_succeeded, df_tags=df_tags)
     filepath = "index.html"
     save_figure(fig=fig, filepath=filepath)
     add_html_header_menu(filepath=filepath)
 
     # Create dedicated PGO figure with nothing else in it.
-    fig = create_figure(df=df_pgo)
+    fig = create_figure(df=df_pgo, df_tags=df_tags)
     filepath = "fig-pgo-all-states.html"
     save_figure(fig=fig, filepath=filepath)
     add_html_header_menu(filepath=filepath)
 
     # Create dedicated PGO figure with nothing else in it.
-    fig = create_figure(df=df_pgo_succeeded)
+    fig = create_figure(df=df_pgo_succeeded, df_tags=df_tags)
     filepath = "fig-pgo-succeeded.html"
     save_figure(fig=fig, filepath=filepath)
     add_html_header_menu(filepath=filepath)

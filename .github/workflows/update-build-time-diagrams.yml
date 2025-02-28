@@ -72,7 +72,7 @@ jobs:
             git -C gh-pages add build-stats-big-merge.csv build-stats-pgo.csv tags.csv
           fi
           if ${{ env.create_diagrams }}; then
-            main/scripts/create-diagrams.py --datafile-big-merge gh-pages/build-stats-big-merge.csv --datafile-pgo gh-pages/build-stats-pgo.csv
+            main/scripts/create-diagrams.py --datafile-tags=tags.csv --datafile-big-merge gh-pages/build-stats-big-merge.csv --datafile-pgo gh-pages/build-stats-pgo.csv
             mv index.html gh-pages/index.html
             mv fig-*.html gh-pages/
             git -C gh-pages add index.html fig-*.html
