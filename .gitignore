@@ -2,4 +2,5 @@ buildroot/
 *.rpm
 .coverage
 .vscode
+.venv
 __pycache__/
