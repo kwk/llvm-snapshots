@@ -285,9 +285,8 @@ def upload(cfg: config.Config, state: build_status.BuildState) -> Contribution |
 
     Example:
 
-    >>> print("Add the SKIP from this line") # doctest: +SKIP
-    >>> cfg = config.Config(log_detective_username="FAS:kkleine")
-    >>> state = build_status.BuildState(
+    >>> cfg = config.Config(log_detective_username="FAS:kkleine")  # doctest: +SKIP
+    >>> state = build_status.BuildState(  # doctest: +SKIP
     ...   package_name="llvm",
     ...   copr_ownername="@fedora-llvm-team",
     ...   copr_projectname="llvm-snapshots-big-merge-20250610",
@@ -296,8 +295,8 @@ def upload(cfg: config.Config, state: build_status.BuildState) -> Contribution |
     ...   url_build_log='https://download.copr.fedorainfracloud.org/results/@fedora-llvm-team/llvm-snapshots-big-merge-20250610/fedora-41-x86_64/09148650-llvm/builder-live.log.gz',
     ...   copr_build_state=build_status.CoprBuildStatus.FAILED
     ...   )
-    >>> state = state.augment_with_error()
-    >>> upload(cfg=cfg, state=state)
+    >>> state = state.augment_with_error()  # doctest: +SKIP
+    >>> upload(cfg=cfg, state=state) # doctest: +SKIP
     """
 
     post_data = None
