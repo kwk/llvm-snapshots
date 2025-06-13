@@ -1,7 +1,6 @@
 import json
 import logging
 import pathlib
-import re
 import uuid
 from typing import Any
 
@@ -178,89 +177,6 @@ def __submit_contribution(
     raise KeyError(
         f"Failed to find 'review_id' field in log detective's response: {res.json()}"
     )
-
-
-def get_contrib_for_chroot(
-    contributions: list[Contribution], chroot: str
-) -> Contribution | None:
-    """Returns the first Contribution in the list that was made for the given
-    chroot or None if no such request exists.
-
-    Args:
-        contributrions (list[Contribution]): A list of contributions to search
-        chroot (str): A chroot to look for
-
-    Returns:
-        Contribution|None: The first contribution that was made for the given chroot or None.
-    """
-    for contrib in contributions:
-        if contrib.chroot == chroot:
-            return contrib
-    return None
-
-
-def parse_for_contributions(string: str) -> list[Contribution]:
-    """Parses the given string for any information about previously submitted
-    contributions to log detective.
-
-    Args:
-        string (str): i.e. a github comment body
-
-    Returns:
-        list[Contribution]: A list of contribuitions (if any) parsed from the string
-
-    Examples:
-
-    >>> string = f'''
-    ... <!--{_contrib_prefix()}:0f0dec2c-7e5c-4627-a864-30013fdcbbe3/fedora-rawhide-x86_64/12345/-->
-    ... <!--{_contrib_prefix()}:c7b0f5dd-37f8-42f7-9b1f-f48301fea186/fedora-42-s390x/6789/-->
-    ... bar
-    ... '''
-    >>> parse_for_contributions(string) # doctest: +NORMALIZE_WHITESPACE
-    [Contribution(review_id=UUID('0f0dec2c-7e5c-4627-a864-30013fdcbbe3'),
-                  chroot='fedora-rawhide-x86_64',
-                  build_id=12345),
-     Contribution(review_id=UUID('c7b0f5dd-37f8-42f7-9b1f-f48301fea186'),
-                  chroot='fedora-42-s390x',
-                  build_id=6789)]
-    """
-    pattern = rf"<!--{_contrib_prefix()}:([^/]+)/([^/]+)/([^/]+)/-->"
-    matches = re.findall(pattern=pattern, string=string)
-    res: list[Contribution] = []
-    for match in matches:
-        try:
-            review_id = util.sanitize_uuid(str(match[0]).strip())
-            chroot = util.expect_chroot(str(match[1]).strip())
-            build_id = int(str(match[2]).strip())
-            contribution = Contribution(
-                review_id=review_id, chroot=chroot, build_id=build_id
-            )
-            res.append(contribution)
-            logging.debug(f"Added contribution: {contribution}")
-        except ValueError as e:
-            logging.debug(f"ignoring match: {match} : {str(e)}")
-    logging.info(f"Recovered log detective contributions: {res}")
-    return res
-
-
-def contributions_to_html_comment(contributions: list[Contribution]) -> str:
-    """Converts the data dictionary of chroot -> request object pairs to html comments.
-
-    Example:
-
-    >>> foo = Contribution(
-    ...     chroot="fedora-rawhide-x86_64",
-    ...     review_id="5823b132-9651-43e4-b6b5-81794b9f4102",
-    ...     build_id=123)
-    >>> bar = Contribution(
-    ...     chroot="fedora-40-s390x",
-    ...     review_id="23ec426f-eaa9-4cc3-a98d-bd7c0a5aeac9",
-    ...     build_id=456)
-    >>> contributions_to_html_comment(contributions=[foo, bar]) # doctest: +NORMALIZE_WHITESPACE
-    '<!--LOG_DETECTIVE_CONTRIBUTION_ID:5823b132-9651-43e4-b6b5-81794b9f4102/fedora-rawhide-x86_64/123-->\\n<!--LOG_DETECTIVE_CONTRIBUTION_ID:23ec426f-eaa9-4cc3-a98d-bd7c0a5aeac9/fedora-40-s390x/456-->\\n'
-    """
-
-    return "".join([contrib.to_html_comment() for contrib in contributions])
 
 
 __how_to_fix_test_issue = """Here is list of some ways to fix an unexpected test result:

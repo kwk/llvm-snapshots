@@ -145,6 +145,152 @@ class SnapshotManager:
         # )
         logging.info(f"All done! Workflow dispatch event created with inputs: {inputs}")
 
+    def submit_to_log_detective(
+        self, issue_number: int, trigger_comment_id: int, chroots: list[str]
+    ) -> None:
+        """Pre-annotates the build for the chroots and submits them to log-detective.
+
+        Whenever something doesn't work we bail and leave a message in the logs.
+
+        Args:
+            issue_number (int): The issue for the day a submission is requested
+            trigger_comment_id (int): The ID of the comment in which the user requested a submission
+            chroots (list[str]): The list of chroots whose builds shall be annotated and submitted to log-detective.
+        """
+        # Get repo
+        repo = self.github.github.get_repo(self.config.github_repo)
+
+        # Get issue
+        logging.info(
+            f"Getting issue with number {issue_number} from repo {self.config.github_repo}"
+        )
+        issue = repo.get_issue(number=issue_number)
+        if issue is None:
+            return
+        logging.info(f"Got issue: {issue.html_url}")
+
+        # Get strategy from issue
+        strategy: str | None = None
+        labels = issue.get_labels()
+        for label in labels:
+            if label.name.startswith("strategy/"):
+                strategy = label.name.removeprefix("strategy/")
+                break
+        if strategy is None:
+            logging.info(
+                f"No strategy label found in labels: {[label.name for label in labels]}"
+            )
+            return
+
+        # Get proper config based on the strategy
+        config_map = config.build_config_map()
+        if strategy not in config_map:
+            logging.info(
+                f"Strategy {strategy} was not found in the config map: {config_map}"
+            )
+            return
+
+        cfg = config_map[strategy]
+
+        # Augment the config with a list of chroots of interest.
+        if len(self.config.chroots) == 0:
+            all_chroots = copr_util.get_all_chroots(client=self.copr)
+            util.augment_config_with_chroots(config=cfg, all_chroots=all_chroots)
+
+        # Get trigger comment
+        trigger_comment = issue.get_comment(id=trigger_comment_id)
+        if trigger_comment is None:
+            logging.info(f"Trigger comment with ID {trigger_comment_id} not found")
+            return
+
+        # Check chroots
+        if chroots is None or len(chroots) == 0:
+            logging.info("No chroots found")
+            return
+
+        logging.info(
+            "Checking if all given chroots are really relevant for us or even chroots"
+        )
+        for chroot in chroots:
+            logging.info(f"Checking chroot: {chroot}")
+            if not util.is_chroot(chroot):
+                logging.info(f"Chroot {chroot} is not a valid chroot.")
+                return
+            if chroot not in cfg.chroots:
+                logging.info(
+                    f"Chroot {chroot} is not in the list of chroots that we consider: {cfg.chroots}"
+                )
+                return
+
+        # Now everything is validated!
+
+        # Fetch all builds, filter them by chroots and pre-annotated them before
+        # we finally submit them to log-detective
+
+        logging.info(
+            f"Fetch all builds for {cfg.copr_ownername}/{cfg.copr_projectname}"
+        )
+        states = copr_util.get_all_build_states(
+            client=self.copr,
+            ownername=cfg.copr_ownername,
+            projectname=cfg.copr_projectname,
+        )
+
+        states = [state for state in states if state.chroot in chroots]
+        logging.info(f"Filtered states by chroots of interest: {len(states)}")
+
+        states = build_status.list_only_errors(states)
+        logging.info(
+            f"Left over error states after eliminating non-error states: {len(states)}"
+        )
+
+        logging.info(
+            "Augmenting states with information from the build logs (pre-annotation)"
+        )
+        states = [state.augment_with_error() for state in states]
+
+        marker = f"<!--SUBMIT-TO-LOG-DETECTIVE-RESPONSE:{trigger_comment_id}-->"
+
+        upload_states: dict[str, str] = {
+            chroot: "(not started yet)" for chroot in chroots
+        }
+
+        def build_response_comment(upload_states: dict[str, str]) -> str:
+            res = f"We're uploading the builds you've requested [here]({trigger_comment.html_url}) to log-detective:\\n"
+            for chroot, msg in upload_states.items():
+                res += msg
+            return res
+
+        if states is None or not (len(states) > 0):
+            return
+
+        logging.info("Creating response comment.")
+        response_comment = self.github.create_or_update_comment(
+            issue=issue,
+            marker=marker,
+            comment_body=build_response_comment(upload_states),
+        )
+
+        for state in states:
+            logging.info(
+                f"Uploading pre-annotated build to log-detective for chroot: {chroot}"
+            )
+            contrib = ld.upload(cfg=cfg, state=state)
+            if contrib is None:
+                logging.info("Failed to upload to to log-detective. Aborting")
+                upload_states[state.chroot] = (
+                    "There was an error when uploading to log-detective! Process is aborting"
+                )
+                response_comment.edit(body=build_response_comment(upload_states))
+                return
+            logging.info(f"Uploaded build to log-detective with review ID: {contrib}")
+            upload_states[state.chroot] = (
+                f"We've uploaded the pre-annotated build log to log-detective for review [here]({contrib.website_url})"
+            )
+            response_comment.edit(body=build_response_comment(upload_states))
+
+        logging.info("All done!")
+
     def check_todays_builds(self) -> None:
         """This method is driven from the config settings"""
         issue, issue_is_newly_created = self.github.create_or_get_todays_github_issue(
@@ -193,9 +339,6 @@ class SnapshotManager:
         logging.info("Recover testing-farm requests")
         requests = tf.Request.parse(comment_body)
 
-        logging.info("Recover log detective contributions")
-        ld_contributions = ld.parse_for_contributions(comment_body)
-
         # Migrate recovered requests without build IDs.
         # Just assign the build IDs of the current chroot respectively.
         for req in requests:
@@ -213,7 +356,6 @@ class SnapshotManager:
 {self.github.initial_comment}
 {build_status_matrix}
 {tf.requests_to_html_comment(requests)}
-{ld.contributions_to_html_comment(ld_contributions)}
 """
         issue.edit(body=comment_body, title=self.github.issue_title())
 
@@ -284,17 +426,6 @@ class SnapshotManager:
             current_copr_build_ids = [
                 state.build_id for state in states if state.chroot == chroot
             ]
-
-            # Remove any log detective contributions if the build ID no longer matches
-            contrib = ld.get_contrib_for_chroot(
-                contributions=ld_contributions, chroot=chroot
-            )
-            if contrib is not None:
-                if {contrib.build_id} != set(current_copr_build_ids):
-                    logging.info(
-                        f"Recovered contribution ({contrib.review_id}) invalid (build ID changed)\\nRecovered: {contrib.build_id}\\Current: {current_copr_build_ids}"
-                    )
-                ld_contributions.remove(contrib)
 
             # Check if we need to invalidate a recovered testing-farm requests.
             # Background: It can be that we have old testing-farm request IDs in the issue comment.
@@ -384,29 +515,11 @@ class SnapshotManager:
                     ),
                 )
 
-        # Walk over chroots to see if we need to submit logs to log-detective
-        for error in errors:
-            if error.chroot not in self.config.chroots:
-                continue
-            # Do we already have a log-detective contribution for this chroot?
-            contrib = ld.get_contrib_for_chroot(
-                contributions=ld_contributions, chroot=chroot
-            )
-            if contrib is not None:
-                continue
-
-            submitted_contribution = ld.upload(cfg=self.config, state=error)
-            if submitted_contribution is None:
-                continue
-
-            ld_contributions.append(submitted_contribution)
-
         logging.info("Constructing issue comment body")
         comment_body = f"""
 {self.github.initial_comment}
 {build_status_matrix}
 {tf.requests_to_html_comment(requests)}
-{ld.contributions_to_html_comment(ld_contributions)}
 """
         issue.edit(body=comment_body, title=self.github.issue_title())
 
