@@ -76,7 +76,7 @@ jobs:
           echo "chroots=$chroots" >> "$GITHUB_ENV"
       - uses: actions/checkout@v4
       - uses: ./.github/actions/prepare-python
-      - name: Run retest script
+      - name: Run submit-to-logdetective script
         shell: bash -e {0}
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TEST_TOKEN }}
