@@ -358,7 +358,7 @@ def argument_parser_submit_to_log_detective(
     subparsers: _SubparserType,
 ) -> None:
     sp = subparsers.add_parser(
-        "retest",
+        "submit-to-log-detective",
         description="Pre-annotates builds for given chroots and uploads them to log-detective",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
