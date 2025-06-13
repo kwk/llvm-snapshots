@@ -61,7 +61,7 @@ jobs:
             if(result['organization']['team']['members']['totalCount'] != 1) {
               core.setFailed("User is not allowed to use the /submit-to-log-detective command");
             }
-  retest:
+  submit-to-log-detective:
     needs: check-team-membership
     if: ${{ !github.event.issue.pull_request && startsWith(github.event.comment.body, '/submit-to-log-detective')}}
     runs-on: ubuntu-latest
@@ -89,7 +89,7 @@ jobs:
             --issue-number ${{ github.event.issue.number }} \
             --chroots ${{ env.chroots }}
   show-reaction-thumbs-up:
-    needs: retest
+    needs: submit-to-log-detective
     runs-on: ubuntu-latest
     steps:
       - name: Add reaction to trigger comment
