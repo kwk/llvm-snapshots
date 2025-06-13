@@ -191,6 +191,10 @@ class SnapshotManager:
             return
 
         cfg = config_map[strategy]
+        # Augment config with chroots of interest
+        if len(cfg.chroots) == 0:
+            all_chroots = copr_util.get_all_chroots(client=self.copr)
+            util.augment_config_with_chroots(config=cfg, all_chroots=all_chroots)
 
         # Augment the config with a list of chroots of interest.
         if len(self.config.chroots) == 0:
