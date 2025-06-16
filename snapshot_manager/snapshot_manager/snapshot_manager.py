@@ -248,14 +248,16 @@ class SnapshotManager:
         )
 
         logging.info(f"chroots of interest: {cfg.chroots}")
-        logging.info(f"requested chroots: {cfg.chroots}")
+        logging.info(f"requested chroots: {chroots}")
 
         states = [state for state in states if state.chroot in chroots]
-        logging.info(f"Filtered states by chroots of interest: {len(states)}")
+        logging.info(
+            f"Filtered states by chroots of interest: {[state.chroot for state in states]}"
+        )
 
         states = build_status.list_only_errors(states)
         logging.info(
-            f"Left over error states after eliminating non-error states: {len(states)}"
+            f"Left over error states after eliminating non-error states: {[state.chroot for state in states]}"
         )
 
         logging.info(
