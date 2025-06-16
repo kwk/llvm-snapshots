@@ -2,6 +2,7 @@
 SnapshotManager
 """
 
+import datetime
 import logging
 import os
 import pathlib
@@ -190,7 +191,18 @@ class SnapshotManager:
             )
             return
 
+        # Get YYYYMMDD from issue.title
+        try:
+            yyyymmdd = util.get_yyyymmdd_from_string(issue.title)
+        except ValueError as ex:
+            logging.info(
+                f"issue title doesn't appear to look like a snapshot issue: {issue.title}: {ex}"
+            )
+            return
+
         cfg = config_map[strategy]
+        cfg.datetime = datetime.datetime.strptime(yyyymmdd, "%Y%m%d")
+
         # Augment config with chroots of interest
         if len(cfg.chroots) == 0:
             all_chroots = copr_util.get_all_chroots(client=self.copr)
