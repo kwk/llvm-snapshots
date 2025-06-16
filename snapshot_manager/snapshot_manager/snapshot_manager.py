@@ -270,7 +270,7 @@ class SnapshotManager:
         }
 
         def build_response_comment(upload_states: dict[str, str]) -> str:
-            res = f"We're uploading the builds you've requested [here]({trigger_comment.html_url}) to log-detective:\n<ul>"
+            res = f"""We're uploading the builds you've requested <a href="{trigger_comment.html_url}">here</a> to log-detective:\n<ul>"""
             for chroot, msg in upload_states.items():
                 res += "<li>" + msg + "</li>"
             res += "</ul>"
@@ -300,7 +300,7 @@ class SnapshotManager:
                 return
             logging.info(f"Uploaded build to log-detective with review ID: {contrib}")
             upload_states[state.chroot] = (
-                f"<b>{state.chroot}:</b> We've uploaded the pre-annotated build log to log-detective for review [here]({contrib.website_url})"
+                f"""<b>{state.chroot}:</b> We've uploaded the pre-annotated build log to log-detective for review <a href="{contrib.website_url}">here</a>."""
             )
             response_comment.edit(body=build_response_comment(upload_states))
 

@@ -120,10 +120,6 @@ class BuildState:
     copr_ownername: str = ""
     copr_projectname: str = ""
 
-    def is_test_issue(self) -> bool:
-        """Returns `True` if the build state was failing because of a test issue"""
-        return self.err_cause == ErrorCause.ISSUE_TEST
-
     def get_spec_file_url(self) -> str:
         """
         Returns the URL to the "llvm.spec" file associated with this build.

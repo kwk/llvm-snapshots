@@ -190,13 +190,10 @@ d) Should none of the above tips work, filter out the test by using the LIT_FILT
 
 def upload(cfg: config.Config, state: build_status.BuildState) -> Contribution | None:
     """
-    If we think the build that is identified by the `state` object is "worth"
-    submitting, we're going to upload it to log detective.
+    This will upload the build that is identified by the `state` object to log
+    detective.
 
-    Some errors that we identify are quite solid (e.g. tests) while others may
-    come with a bit of uncertainty. The latter ones are not uploaded.
-
-    The fiven `state` object should have called `state.augment_with_error()`
+    The given `state` object should have called `state.augment_with_error()`
     before.
 
     Example:
@@ -216,9 +213,6 @@ def upload(cfg: config.Config, state: build_status.BuildState) -> Contribution |
     """
 
     post_data = None
-    logging.info(
-        f"Checking if build is worthy to be uploaded to log-detective: {state.copr_ownername}/{state.copr_projectname} (build_id={state.build_id}, chroot={state.chroot})"
-    )
 
     if state._build_log_file is None:
         logging.info(
@@ -226,46 +220,57 @@ def upload(cfg: config.Config, state: build_status.BuildState) -> Contribution |
         )
         return None
 
-    if state.is_test_issue():
-        logging.info("Build is a test issue and will be uploaded")
+    spec_file_url = state.get_spec_file_url()
+    logging.info("Getting spec file from: %s", spec_file_url)
+    spec_file = util.read_url_response_into_file(spec_file_url)
 
-        spec_file_url = state.get_spec_file_url()
-        logging.info("Getting spec file from: %s", spec_file_url)
-        spec_file = util.read_url_response_into_file(spec_file_url)
+    match state.err_cause:
+        case build_status.ErrorCause.ISSUE_TEST:
+            logging.info("Build is a test issue and will be pre-annotated")
 
-        # Test data is separated by binary zeros so we'll create a snippets
-        # array from it.
-        snippets_texts: list[str] = []
-        user_comments: list[str] = []
-        for failing_test in state._err_orig_ctx.split("\x00"):
-            if not failing_test:
-                continue
-            test_name = "n/a"
-            test_result = "n/a"
-            lines = failing_test.splitlines()
-            if len(lines) > 0:
-                test_name = lines[0].replace("********************", "").strip()
-                test_name = test_name.removeprefix("TEST '")
-                idx = test_name.rfind("' ")
-                test_result = test_name[(idx + 2) :]
-                test_name = test_name[:idx]
+            # Test data is separated by binary zeros so we'll create a snippets
+            # array from it.
+            snippets_texts: list[str] = []
+            user_comments: list[str] = []
+            for failing_test in state._err_orig_ctx.split("\x00"):
+                if not failing_test:
+                    continue
+                test_name = "n/a"
+                test_result = "n/a"
+                lines = failing_test.splitlines()
+                if len(lines) > 0:
+                    test_name = lines[0].replace("********************", "").strip()
+                    test_name = test_name.removeprefix("TEST '")
+                    idx = test_name.rfind("' ")
+                    test_result = test_name[(idx + 2) :]
+                    test_name = test_name[:idx]
 
-            logging.info(f"Found test_name: {test_name} Result: {test_result}")
+                logging.info(f"Found test_name: {test_name} Result: {test_result}")
 
-            snippets_texts.append(failing_test)
-            user_comments.append(
-                f'The test "{test_name}" ended with result: "{test_result}". This shows the output that was gathered for the test execution. It might contain insights into why the test "{test_name}" had an unexpected outcome.'
+                snippets_texts.append(failing_test)
+                user_comments.append(
+                    f'The test "{test_name}" ended with result: "{test_result}". This shows the output that was gathered for the test execution. It might contain insights into why the test "{test_name}" had an unexpected outcome.'
+                )
+
+            post_data = __make_contribution_post_data(
+                username=cfg.log_detective_username,
+                fail_reason="At least one test had an unexpected outcome.",
+                how_to_fix=__how_to_fix_test_issue,
+                spec_file=spec_file,
+                log_file=state._build_log_file,
+                snippet_texts=snippets_texts,
+                user_comments=user_comments,
             )
-
-        post_data = __make_contribution_post_data(
-            username=cfg.log_detective_username,
-            fail_reason="At least one test had an unexpected outcome.",
-            how_to_fix=__how_to_fix_test_issue,
-            spec_file=spec_file,
-            log_file=state._build_log_file,
-            snippet_texts=snippets_texts,
-            user_comments=user_comments,
-        )
+        case _:
+            post_data = __make_contribution_post_data(
+                username=cfg.log_detective_username,
+                fail_reason="",
+                how_to_fix="",
+                spec_file=spec_file,
+                log_file=state._build_log_file,
+                snippet_texts=[],
+                user_comments=[],
+            )
 
     if post_data is not None:
         logging.info("Uploading build to log-detective.")
