@@ -269,7 +269,7 @@ class SnapshotManager:
             chroot: f"<b>{chroot}:</b> (not started yet)" for chroot in chroots
         }
 
-        logging.info("Environment variables: {os.environ}")
+        logging.info(f"Environment variables: {os.environ}")
 
         def build_response_comment(upload_states: dict[str, str]) -> str:
             res = f"""Thank you @{trigger_comment.author_association} for <a href="{trigger_comment.html_url}">your request</a>. We're uploading the builds to log-detective:\n<ul>"""
