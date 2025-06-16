@@ -208,11 +208,6 @@ class SnapshotManager:
             all_chroots = copr_util.get_all_chroots(client=self.copr)
             util.augment_config_with_chroots(config=cfg, all_chroots=all_chroots)
 
-        # Augment the config with a list of chroots of interest.
-        if len(self.config.chroots) == 0:
-            all_chroots = copr_util.get_all_chroots(client=self.copr)
-            util.augment_config_with_chroots(config=cfg, all_chroots=all_chroots)
-
         # Get trigger comment
         trigger_comment = issue.get_comment(id=trigger_comment_id)
         if trigger_comment is None:
@@ -251,6 +246,9 @@ class SnapshotManager:
             ownername=cfg.copr_ownername,
             projectname=cfg.copr_projectname,
         )
+
+        logging.info(f"chroots of interest: {cfg.chroots}")
+        logging.info(f"requested chroots: {cfg.chroots}")
 
         states = [state for state in states if state.chroot in chroots]
         logging.info(f"Filtered states by chroots of interest: {len(states)}")
