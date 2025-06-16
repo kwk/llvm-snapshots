@@ -266,8 +266,10 @@ class SnapshotManager:
         states = [state.augment_with_error() for state in states]
 
         upload_states: dict[str, str] = {
-            chroot: "(not started yet)" for chroot in chroots
+            chroot: f"<b>{chroot}:</b> (not started yet)" for chroot in chroots
         }
+
+        logging.info("Environment variables: {os.environ}")
 
         def build_response_comment(upload_states: dict[str, str]) -> str:
             res = f"""We're uploading the builds you've requested <a href="{trigger_comment.html_url}">here</a> to log-detective:\n<ul>"""
