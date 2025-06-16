@@ -272,7 +272,7 @@ class SnapshotManager:
         logging.info("Environment variables: {os.environ}")
 
         def build_response_comment(upload_states: dict[str, str]) -> str:
-            res = f"""We're uploading the builds you've requested <a href="{trigger_comment.html_url}">here</a> to log-detective:\n<ul>"""
+            res = f"""Thank you @{trigger_comment.author_association} for <a href="{trigger_comment.html_url}">your request</a>. We're uploading the builds to log-detective:\n<ul>"""
             for chroot, msg in upload_states.items():
                 res += "<li>" + msg + "</li>"
             res += "</ul>"
