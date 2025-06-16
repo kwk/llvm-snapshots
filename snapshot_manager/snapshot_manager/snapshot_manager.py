@@ -253,16 +253,15 @@ class SnapshotManager:
         )
         states = [state.augment_with_error() for state in states]
 
-        marker = f"<!--SUBMIT-TO-LOG-DETECTIVE-RESPONSE:{trigger_comment_id}-->"
-
         upload_states: dict[str, str] = {
             chroot: "(not started yet)" for chroot in chroots
         }
 
         def build_response_comment(upload_states: dict[str, str]) -> str:
-            res = f"We're uploading the builds you've requested [here]({trigger_comment.html_url}) to log-detective:\\n"
+            res = f"We're uploading the builds you've requested [here]({trigger_comment.html_url}) to log-detective:\n<ul>"
             for chroot, msg in upload_states.items():
-                res += msg
+                res += "<li>" + msg + "</li>"
+            res += "</ul>"
             return res
 
         if states is None or not (len(states) > 0):
@@ -271,7 +270,7 @@ class SnapshotManager:
         logging.info("Creating response comment.")
         response_comment = self.github.create_or_update_comment(
             issue=issue,
-            marker=marker,
+            marker=f"<!--SUBMIT-TO-LOG-DETECTIVE-RESPONSE:{trigger_comment_id}-->",
             comment_body=build_response_comment(upload_states),
         )
 
@@ -283,13 +282,13 @@ class SnapshotManager:
             if contrib is None:
                 logging.info("Failed to upload to to log-detective. Aborting")
                 upload_states[state.chroot] = (
-                    "There was an error when uploading to log-detective! Process is aborting"
+                    f"<b>{state.chroot}:</b> There was an error when uploading to log-detective! Process is aborting"
                 )
                 response_comment.edit(body=build_response_comment(upload_states))
                 return
             logging.info(f"Uploaded build to log-detective with review ID: {contrib}")
             upload_states[state.chroot] = (
-                f"We've uploaded the pre-annotated build log to log-detective for review [here]({contrib.website_url})"
+                f"<b>{state.chroot}:</b> We've uploaded the pre-annotated build log to log-detective for review [here]({contrib.website_url})"
             )
             response_comment.edit(body=build_response_comment(upload_states))
 
