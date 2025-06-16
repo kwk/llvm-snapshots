@@ -269,10 +269,13 @@ class SnapshotManager:
             chroot: f"<b>{chroot}:</b> (not started yet)" for chroot in chroots
         }
 
-        logging.info(f"Environment variables: {os.environ}")
+        repository = os.getenv("GITHUB_REPOSITORY", "")
+        server_url = os.getenv("GITHUB_SERVER_URL", "")
+        run_id = os.getenv("GITHUB_RUN_ID", "")
+        action_run_link = f"{server_url}/{repository}/actions/runs/{run_id}"
 
         def build_response_comment(upload_states: dict[str, str]) -> str:
-            res = f"""Thank you @{trigger_comment.user.login} for <a href="{trigger_comment.html_url}">your request</a>. We're uploading the builds to log-detective:\n<ul>"""
+            res = f"""Thank you @{trigger_comment.user.login} for <a href="{trigger_comment.html_url}">your request</a>. <a href="{action_run_link}">We're uploading</a> the builds to log-detective:\n<ul>"""
             for chroot, msg in upload_states.items():
                 res += "<li>" + msg + "</li>"
             res += "</ul>"
