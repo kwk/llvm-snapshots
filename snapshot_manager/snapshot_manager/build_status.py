@@ -217,6 +217,9 @@ class BuildState:
 
     def augment_with_error(self) -> "BuildState":
         """Inspects the build status and if it is an error it will get and scan the logs"""
+        self._build_log_file = None
+        self._source_build_file = None
+
         if self.copr_build_state != CoprBuildStatus.FAILED:
             logging.debug(
                 f"package {self.chroot}/{self.package_name} didn't fail no need to look for errors"

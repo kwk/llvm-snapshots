@@ -30,10 +30,10 @@ def __make_contribution_post_data(
     fail_reason: str,
     how_to_fix: str,
     spec_file: pathlib.Path | None,
-    log_file: pathlib.Path,
+    log_file: pathlib.Path | None,
     snippet_texts: list[str],
     user_comments: list[str],
-) -> dict[str, Any]:
+) -> dict[str, Any] | None:
     """This is a quick and dirty function to construct a contribution object to
     be submitted to log-detective as a review contribution.
 
@@ -41,8 +41,8 @@ def __make_contribution_post_data(
         username (str): Username under which to submit the review (e.g. "FAS:kkleine").
         fail_reason (str): Overall reason for why this build failed.
         how_to_fix (str): A description of means on how to fix the issue.
-        spec_file (pathlib.Path): The spec file being used.
-        log_file (pathlib.Path): The log file being used.
+        spec_file (pathlib.Path | None): The spec file being used.
+        log_file (pathlib.Path | None): The log file being used.
         snippet_texts (list[str]): A list of excerpts from the log file that are relevant for this error.
         user_comments (list[str]): A list of user comments that describe the snippets. Must be of same length as "snippet_texts".
 
@@ -50,8 +50,12 @@ def __make_contribution_post_data(
         ValueError: In case snippet_texts and user_comments don't share the same length.
 
     Returns:
-        dict[str, object]: A data object that can be submitted to log-detective using `requests.post(url, json=data)`
+        dict[str, object] | None: A data object that can be submitted to log-detective using `requests.post(url, json=data)`
     """
+    if log_file is None:
+        logging.info("No log file was specified. Bailing.")
+        return None
+
     logging.info("Reading log file: %s", log_file)
     log_file_content = log_file.read_text()
 
