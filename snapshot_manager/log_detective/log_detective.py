@@ -29,7 +29,7 @@ def __make_contribution_post_data(
     username: str,
     fail_reason: str,
     how_to_fix: str,
-    spec_file: pathlib.Path,
+    spec_file: pathlib.Path | None,
     log_file: pathlib.Path,
     snippet_texts: list[str],
     user_comments: list[str],
@@ -54,13 +54,20 @@ def __make_contribution_post_data(
     """
     logging.info("Reading log file: %s", log_file)
     log_file_content = log_file.read_text()
+
+    spec_file_name = ""
+    spec_file_content = ""
+    if spec_file is not None:
+        spec_file_name = spec_file.name
+        spec_file_content = spec_file.read_text()
+
     data: dict[str, Any] = {
         "username": username,
         "fail_reason": fail_reason,
         "how_to_fix": how_to_fix,
         "spec_file": {
-            "name": spec_file.name,
-            "content": spec_file.read_text(),
+            "name": spec_file_name,
+            "content": spec_file_content,
         },
         "logs": [
             {
@@ -213,10 +220,13 @@ def upload(cfg: config.Config, state: build_status.BuildState) -> Contribution |
     """
 
     post_data = None
+    spec_file = None
 
-    spec_file_url = state.get_spec_file_url()
-    logging.info("Getting spec file from: %s", spec_file_url)
-    spec_file = util.read_url_response_into_file(spec_file_url)
+    # Expect a spec file to exist when a build log exists.
+    if state._build_log_file is not None:
+        spec_file_url = state.get_spec_file_url()
+        logging.info("Getting spec file from: %s", spec_file_url)
+        spec_file = util.read_url_response_into_file(spec_file_url)
 
     if state.err_cause == build_status.ErrorCause.ISSUE_TEST:
         if state._build_log_file is None:
