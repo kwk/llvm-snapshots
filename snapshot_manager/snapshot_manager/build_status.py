@@ -229,12 +229,12 @@ class BuildState:
             logging.debug(
                 f"No build log found for package {self.chroot}/{self.package_name}. Falling back to scanning the SRPM build log: {self.source_build_url}"
             )
-            file = util.read_url_response_into_file(
+            self._source_build_file = util.read_url_response_into_file(
                 url=self.source_build_url,
                 prefix=f"{self.package_name}-{self.chroot}-source-build-log",
             )
             _, match, _ = util.grep_file(
-                filepath=file,
+                filepath=self._source_build_file,
                 pattern=r"error:",
                 lines_after=3,
                 lines_before=3,

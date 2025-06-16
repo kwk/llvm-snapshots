@@ -214,63 +214,66 @@ def upload(cfg: config.Config, state: build_status.BuildState) -> Contribution |
 
     post_data = None
 
-    if state._build_log_file is None:
-        logging.info(
-            "Build has no log file loaded (did you run augment_with_error() before?)"
-        )
-        return None
-
     spec_file_url = state.get_spec_file_url()
     logging.info("Getting spec file from: %s", spec_file_url)
     spec_file = util.read_url_response_into_file(spec_file_url)
 
-    match state.err_cause:
-        case build_status.ErrorCause.ISSUE_TEST:
-            logging.info("Build is a test issue and will be pre-annotated")
-
-            # Test data is separated by binary zeros so we'll create a snippets
-            # array from it.
-            snippets_texts: list[str] = []
-            user_comments: list[str] = []
-            for failing_test in state._err_orig_ctx.split("\x00"):
-                if not failing_test:
-                    continue
-                test_name = "n/a"
-                test_result = "n/a"
-                lines = failing_test.splitlines()
-                if len(lines) > 0:
-                    test_name = lines[0].replace("********************", "").strip()
-                    test_name = test_name.removeprefix("TEST '")
-                    idx = test_name.rfind("' ")
-                    test_result = test_name[(idx + 2) :]
-                    test_name = test_name[:idx]
-
-                logging.info(f"Found test_name: {test_name} Result: {test_result}")
-
-                snippets_texts.append(failing_test)
-                user_comments.append(
-                    f'The test "{test_name}" ended with result: "{test_result}". This shows the output that was gathered for the test execution. It might contain insights into why the test "{test_name}" had an unexpected outcome.'
-                )
-
-            post_data = __make_contribution_post_data(
-                username=cfg.log_detective_username,
-                fail_reason="At least one test had an unexpected outcome.",
-                how_to_fix=__how_to_fix_test_issue,
-                spec_file=spec_file,
-                log_file=state._build_log_file,
-                snippet_texts=snippets_texts,
-                user_comments=user_comments,
+    if state.err_cause == build_status.ErrorCause.ISSUE_TEST:
+        if state._build_log_file is None:
+            logging.info(
+                "Build has no log file loaded (did you run augment_with_error() before?)"
             )
-        case _:
-            post_data = __make_contribution_post_data(
-                username=cfg.log_detective_username,
-                fail_reason="",
-                how_to_fix="",
-                spec_file=spec_file,
-                log_file=state._build_log_file,
-                snippet_texts=[],
-                user_comments=[],
+            return None
+
+        logging.info("Build is a test issue and will be pre-annotated")
+
+        # Test data is separated by binary zeros so we'll create a snippets
+        # array from it.
+        snippets_texts: list[str] = []
+        user_comments: list[str] = []
+        for failing_test in state._err_orig_ctx.split("\x00"):
+            if not failing_test:
+                continue
+            test_name = "n/a"
+            test_result = "n/a"
+            lines = failing_test.splitlines()
+            if len(lines) > 0:
+                test_name = lines[0].replace("********************", "").strip()
+                test_name = test_name.removeprefix("TEST '")
+                idx = test_name.rfind("' ")
+                test_result = test_name[(idx + 2) :]
+                test_name = test_name[:idx]
+
+            logging.info(f"Found test_name: {test_name} Result: {test_result}")
+
+            snippets_texts.append(failing_test)
+            user_comments.append(
+                f'The test "{test_name}" ended with result: "{test_result}". This shows the output that was gathered for the test execution. It might contain insights into why the test "{test_name}" had an unexpected outcome.'
             )
+
+        post_data = __make_contribution_post_data(
+            username=cfg.log_detective_username,
+            fail_reason="At least one test had an unexpected outcome.",
+            how_to_fix=__how_to_fix_test_issue,
+            spec_file=spec_file,
+            log_file=state._build_log_file,
+            snippet_texts=snippets_texts,
+            user_comments=user_comments,
+        )
+    # TODO(kwk): Add more cases that we could annotate here.
+    else:
+        log_file = state._build_log_file
+        if log_file is None:
+            log_file = state._source_build_file
+        post_data = __make_contribution_post_data(
+            username=cfg.log_detective_username,
+            fail_reason="error cause: " + str(state.err_cause),
+            how_to_fix="",
+            spec_file=spec_file,
+            log_file=log_file,
+            snippet_texts=[],
+            user_comments=[],
+        )
 
     if post_data is not None:
         logging.info("Uploading build to log-detective.")
