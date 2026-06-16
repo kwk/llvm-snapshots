@@ -26,11 +26,8 @@ jobs:
           fetch-depth: 1
 
       - name: Checkout rpms/llvm repo
-        uses: actions/checkout@v6
-        with:
-          repository: 'https://src.fedoraproject.org/forks/kkleine/rpms/llvm.git'
-          ref: 'man-pages'
-          path: 'rpms/llvm'
+        run: |
+          git clone --depth 1 --branch man-pages https://src.fedoraproject.org/forks/kkleine/rpms/llvm.git rpms/llvm
 
       - uses: ./.github/actions/prepare-python
 
