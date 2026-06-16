@@ -29,7 +29,7 @@ jobs:
 
       - name: Checkout rpms/llvm repo
         run: |
-          sudo dnf install -y git lsb_release ninja-build clang++ cmake
+          sudo dnf install -y git lsb_release ninja-build clang++ cmake python3-sphinx sphinx
           git clone --depth 1 --branch man-pages https://src.fedoraproject.org/forks/kkleine/rpms/llvm.git rpms/llvm
 
       - uses: ./.github/actions/prepare-python
