@@ -33,6 +33,7 @@ def main(args: argparse.Namespace) -> None:
         glob_patterns = [
             "*-{}.src.tar.xz",
             "llvm*-{}.txt",
+            "llvm-man-pages*~pre{}-*.tar.xz",
         ]
         for pattern in glob_patterns:
             for name in glob(pattern.format(yyyymmdd)):
