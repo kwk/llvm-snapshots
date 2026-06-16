@@ -33,6 +33,8 @@ jobs:
           git clone --depth 1 --branch man-pages https://src.fedoraproject.org/forks/kkleine/rpms/llvm.git rpms/llvm
 
       - uses: ./.github/actions/prepare-python
+        with:
+          use-system-python: true
 
       - name: "delete assets older than 33 days and from today"
         env:
