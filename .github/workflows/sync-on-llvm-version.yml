@@ -29,6 +29,7 @@ jobs:
 
       - name: Checkout rpms/llvm repo
         run: |
+          sudo dnf install -y git
           git clone --depth 1 --branch man-pages https://src.fedoraproject.org/forks/kkleine/rpms/llvm.git rpms/llvm
 
       - uses: ./.github/actions/prepare-python
