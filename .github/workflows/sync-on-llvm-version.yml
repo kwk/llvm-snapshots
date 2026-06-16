@@ -20,6 +20,8 @@ jobs:
   regenerate-assets:
     name: "(Re)generate assets"
     runs-on: ubuntu-latest
+    container:
+      image: "registry.fedoraproject.org/fedora:44"
     steps:
       - uses: actions/checkout@v6
         with:
