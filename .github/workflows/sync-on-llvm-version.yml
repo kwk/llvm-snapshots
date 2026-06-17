@@ -27,8 +27,8 @@ jobs:
 
       - name: Checkout rpms/llvm repo
         run: |
-          apt-get update
-          apt-get install -y git ninja-build clang cmake libclang-dev
+          sudo apt-get update
+          sudo apt-get install -y git ninja-build clang cmake libclang-dev
           git clone --depth 1 --branch man-pages https://src.fedoraproject.org/forks/kkleine/rpms/llvm.git rpms/llvm
 
       - uses: ./.github/actions/prepare-python
