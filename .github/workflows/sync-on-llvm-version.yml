@@ -20,8 +20,6 @@ jobs:
   regenerate-assets:
     name: "(Re)generate assets"
     runs-on: ubuntu-latest
-    container:
-      image: "registry.fedoraproject.org/fedora:44"
     steps:
       - uses: actions/checkout@v6
         with:
@@ -29,12 +27,11 @@ jobs:
 
       - name: Checkout rpms/llvm repo
         run: |
-          sudo dnf install -y git lsb_release ninja-build clang++ cmake python3-sphinx sphinx
+          apt-get update
+          apt-get install -y git ninja-build clang cmake libclang-dev
           git clone --depth 1 --branch man-pages https://src.fedoraproject.org/forks/kkleine/rpms/llvm.git rpms/llvm
 
       - uses: ./.github/actions/prepare-python
-        with:
-          use-system-python: true
 
       - name: "delete assets older than 33 days and from today"
         env:
