@@ -5,11 +5,12 @@ import datetime
 import os
 from glob import glob
 
-from github import Github, UnknownObjectException
+from github import Auth, Github, UnknownObjectException
 
 
 def main(args: argparse.Namespace) -> None:
-    g = Github(login_or_token=args.token)
+    auth = Auth.Token(token=args.token)
+    g = Github(auth=auth)
     repo = g.get_repo(args.project)
 
     yyyymmdd = args.yyyymmdd
